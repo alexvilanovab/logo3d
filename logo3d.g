@@ -1,18 +1,19 @@
 grammar logo3d;
 
-ID : [a-zA-Z]+[a-zA-Z0-9_]* ;
+ID : [a-zA-Z_]+[a-zA-Z_0-9]* ;
 INT : [0-9]+ ;
 DEC : [0-9]+'.'[0-9]+ ;
 
-ADD : '+' ;
-SUB : '-' ;
 MUL : '*' ;
 DIV : '/' ;
+ADD : '+' ;
+SUB : '-' ;
 
-expr :  expr ADD expr #add
-    |   expr SUB expr #subtract
+expr :  SUB expr #negativeExpression
     |   expr MUL expr #multiply
     |   expr DIV expr #divide
+    |   expr ADD expr #add
+    |   expr SUB expr #subtract
     |   INT #atomInteger
     |   DEC #atomDecimal
     |   ID #atomIdentifier
