@@ -1,0 +1,10 @@
+logo3d.interp
+logo3d.tokens
+logo3dLexer.interp
+logo3dLexer.py
+logo3dLexer.tokens
+logo3dParser.py
+logo3dVisitor.py
+
+__pycache__
+.antlr
