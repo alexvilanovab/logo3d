@@ -10,7 +10,7 @@ else:
 
 class Visitor(logo3dVisitor):
     # llista de noms de procediments prohibits
-    RESERVED_PROCEDURE_NAMES = ['color', 'up', 'down', 'left', 'right', 'forward', 'backward', 'hide', 'show', 'home']
+    RESERVED_PROCEDURE_NAMES = ('color', 'up', 'down', 'left', 'right', 'forward', 'backward', 'hide', 'show', 'home')
 
     def __init__(self, main, parameters):
         self.variables = {}  # key-value que guarda els noms de les variables amb els seus valors
@@ -68,6 +68,12 @@ class Visitor(logo3dVisitor):
         # busquem el valor de la variable al nostre diccionari i el retornem, en cas de que no hi sigui retornem 0
         return self.variables[variableName] if variableName in self.variables else 0
 
+    def visitAtomString(self, ctx):
+        l = list(ctx.getChildren())
+        # l[0]
+        # tant sols retornem el text del fill
+        return l[0].getText()
+
     def visitNegativeExpression(self, ctx):
         l = list(ctx.getChildren())
         # -l[0]
@@ -86,7 +92,7 @@ class Visitor(logo3dVisitor):
         # visitem les dues expressions i retornem 1 si la primera és més petita que la segona, 0 en cas contraric
         return self.visit(l[0]) < self.visit(l[2])
 
-    def visitGreaterTHanOrEqual(self, ctx):
+    def visitGreaterThanOrEqual(self, ctx):
         l = list(ctx.getChildren())
         # l[0] >= l[2]
         # visitem les dues expressions i retornem 1 si la primera és més gran o igual a la segona, 0 en cas contraric
@@ -136,12 +142,18 @@ class Visitor(logo3dVisitor):
         # visitem l'expressió i mostrem el resultat per pantalla
         print(self.visit(l[1]))
 
+    def visitLog(self, ctx):
+        l = list(ctx.getChildren())
+        # LOG l[1]
+        # visitem l'expressió i mostrem el log per pantalla eliminant les cometes del principi i del final
+        print(self.visit(l[1])[1:-1])
+
     def visitWhileLoop(self, ctx):
         l = list(ctx.getChildren())
-        # WHILE l[1] DO l[3], l[4], ..., END
+        # WHILE l[1] DO l[3] l[4] ... END
         # mentre visitem la expressió l[1]
-        while self.visit(l[1]):
-            # visitem els statements l[3], l[4], ... fins trobar END
+        while abs(self.visit(l[1])) > 1e-6:
+            # visitem els statements l[3] l[4] ... fins trobar END
             childIndex = 3
             while l[childIndex].getText() != 'END':
                 self.visit(l[childIndex])
@@ -149,7 +161,7 @@ class Visitor(logo3dVisitor):
 
     def visitForLoop(self, ctx):
         l = list(ctx.getChildren())
-        # FOR l[1] FROM l[3] TO l[5] DO l[7], l[8], ..., END
+        # FOR l[1] FROM l[3] TO l[5] DO l[7] l[8] ... END
         # obtenim el nom de la variable del bucle i els bounds d'inici i de fi
         variableName = l[1].getText()
         fr = self.visit(l[3])
@@ -168,10 +180,10 @@ class Visitor(logo3dVisitor):
 
     def visitIfThenElse(self, ctx):
         l = list(ctx.getChildren())
-        # IF l[1] THEN l[3], l[4], ..., l[n] ELSE l[n+2], l[n+3], ... END
+        # IF l[1] THEN l[3] l[4] ... l[n] ELSE l[n+2] l[n+3] ... END
         childIndex = 3
         # visitem la expressió booleana del bucle
-        if self.visit(l[1]):
+        if abs(self.visit(l[1])) > 1e-6:
             # la expressió booleana del bucle ha resultat ser 1
             # visitem els statements l[3], l[4], ... fins trobar ELSE o END
             while l[childIndex].getText() not in ['ELSE', 'END']:
@@ -186,6 +198,51 @@ class Visitor(logo3dVisitor):
                 # hem trobat un ELSE, visitem els statements l[n+2], l[n+3], ... fins trobar END
                 while l[childIndex].getText() != 'END':
                     self.visit(l[childIndex])
+                    childIndex += 1
+
+    def visitSwitch(self, ctx):
+        l = list(ctx.getChildren())
+        # SWITCH ID (CASE expr DO stat*)* (DEFAULT DO stat*)? END
+        variableName = l[1].getText()
+        # comprovem que la variable que es vol avaluar s'ha declarat previament
+        if variableName not in self.variables:
+            raise Exception('Variable "{name}" not found'.format(name=variableName))
+        variableValue = self.variables[variableName]
+        childIndex = 2
+        scope = ''
+        # iterem els elements de la regla guardant el scope en cada pas
+        while True:
+            # en el cas de trobar un CASE, canviem el scope i seguim
+            if l[childIndex].getText() == 'CASE':
+                scope = 'CASE'
+                childIndex += 1
+            # en el cas de trobar un DEFAULT, canviem el scope i seguim
+            elif l[childIndex].getText() == 'DEFAULT':
+                scope = 'DEFAULT'
+                childIndex += 2  # saltem el DO
+            # en el cas de trobar un END, sortim del bucle
+            elif l[childIndex].getText() == 'END':
+                break
+            # en el cas d'estar en el scope DEFAULT, avaluem els statements
+            # al trobar END sortim del bucle
+            elif scope == 'DEFAULT':
+                while l[childIndex].getText() != 'END':
+                    self.visit(l[childIndex])
+                    childIndex += 1
+                break
+            # en el cas de que la condició d'un CASE es compleixi, avaluem els statements
+            # al trobar CASE, END o DEFAULT sortim del bucle
+            elif variableValue == self.visit(l[childIndex]):
+                childIndex += 2  # saltem el DO
+                while l[childIndex].getText() not in ['CASE', 'DEFAULT', 'END']:
+                    self.visit(l[childIndex])
+                    childIndex += 1
+                break
+            # en el cas de que la condició d'un CASE no es compleixi
+            # saltem el DO i tots els statements fins trobar un CASE, DEFAULT o END
+            else:
+                childIndex += 2
+                while l[childIndex].getText() not in ['CASE', 'DEFAULT', 'END']:
                     childIndex += 1
 
     def visitProcedure(self, ctx):
@@ -234,27 +291,36 @@ class Visitor(logo3dVisitor):
         # obtenim el nom del procediment que estem executant
         procedureName = l[0].getText()
         # en el cas de que sigui ua crida a un dels procediments del llenguatge (una de les opcions de control de la tortuga)
-        #   executem la part de codi corresponent. en aquest pas crec que s'hauria de verificar que la sintaxis es correcte
-        #   (el nombre de parametres i el seu tipus es el que toca) abans de cridar a turtle però m'he assabentat tard
+        #   executem la part de codi corresponent sempre comprovant que el nombre de parametres sigui l'adequat
         if procedureName == 'color':
+            assert(len(procedureParameters) == 3)
             self.turtle.color(*procedureParameters)
         elif procedureName == 'up':
+            assert(len(procedureParameters) == 1)
             self.turtle.up(*procedureParameters)
         elif procedureName == 'down':
+            assert(len(procedureParameters) == 1)
             self.turtle.down(*procedureParameters)
         elif procedureName == 'left':
+            assert(len(procedureParameters) == 1)
             self.turtle.left(*procedureParameters)
         elif procedureName == 'right':
+            assert(len(procedureParameters) == 1)
             self.turtle.right(*procedureParameters)
         elif procedureName == 'forward':
+            assert(len(procedureParameters) == 1)
             self.turtle.forward(*procedureParameters)
         elif procedureName == 'backward':
+            assert(len(procedureParameters) == 1)
             self.turtle.backward(*procedureParameters)
         elif procedureName == 'hide':
+            assert(len(procedureParameters) == 0)
             self.turtle.hide(*procedureParameters)
         elif procedureName == 'show':
+            assert(len(procedureParameters) == 0)
             self.turtle.show(*procedureParameters)
         elif procedureName == 'home':
+            assert(len(procedureParameters) == 0)
             self.turtle.home(*procedureParameters)
         # en el cas de que sigui una crida a un procediment del programa
         else:

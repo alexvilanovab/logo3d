@@ -79,8 +79,9 @@ class Turtle3D:
         '''
         self.head = self.__computeHead(size)
         if self.visible:
-            self.__draw()
-        self.position = self.position + self.head
+            self.__draw()  # dibuixar + moure
+        else:
+            self.position = self.position + self.head  # nomes moure
 
     def backward(self, size):
         '''Mou la tortuga endarrere i pinta en cas d'estar visible.
@@ -90,8 +91,9 @@ class Turtle3D:
         '''
         self.head = self.__computeHead(size) * -1
         if self.visible:
-            self.__draw()
-        self.position = self.position + self.head
+            self.__draw()  # dibuixar + moure
+        else:
+            self.position = self.position + self.head  # nomes moure
 
     def hide(self):
         '''Desactiva la tortuga, fa que no pinti al fer forward o backward.
@@ -117,5 +119,7 @@ class Turtle3D:
         return vector(headX, headY, headZ)
 
     def __draw(self):
+        sphere(pos=self.position, radius=self.strokeWeight, color=self.strokeColor)
         cylinder(pos=self.position, axis=self.head, radius=self.strokeWeight, color=self.strokeColor)
+        self.position = self.position + self.head
         sphere(pos=self.position, radius=self.strokeWeight, color=self.strokeColor)

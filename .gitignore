@@ -9,4 +9,5 @@ logo3dVisitor.py
 __pycache__
 .antlr
 *.l3d
+!test-switch-log.l3d
 test.py

@@ -28,7 +28,7 @@ NOTEQ : '!=' ;
 
 boolExpr :  expr GT expr #greaterThan
     |       expr ST expr #smallerThan
-    |       expr GET expr #greaterTHanOrEqual
+    |       expr GET expr #greaterThanOrEqual
     |       expr SET expr #smallerThanOrEqual
     |       expr EQ expr #equal
     |       expr NOTEQ expr #notEqual
@@ -38,12 +38,18 @@ ASSIG : ':=';
 READ : '>>';
 WRITE : '<<';
 
+STR : '"'[a-zA-Z0-9 ]*'"' ; 
+
+stringExpr : STR #atomString ;
+
 stat :  ID ASSIG expr #assign
     |   READ ID #read
     |   WRITE expr #write
+    |   'LOG' stringExpr #log
     |   'WHILE' boolExpr 'DO' stat* 'END' #whileLoop
     |   'FOR' ID 'FROM' expr 'TO' expr 'DO' stat* 'END' #forLoop
     |   'IF' boolExpr 'THEN' stat* ('ELSE' stat*)? 'END' #ifThenElse
+    |   'SWITCH' ID ('CASE' expr 'DO' stat*)* ('DEFAULT' 'DO' stat*)? 'END' #switch
     |   ID'('(expr(','expr)*)?')' #callProcedure
     ;
 

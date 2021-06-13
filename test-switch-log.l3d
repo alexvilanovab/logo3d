@@ -1,0 +1,20 @@
+PROC main() IS
+    LOG "choose your favorite color"
+    LOG "    1 orange"
+    LOG "    2 pink"
+    LOG "    3 green"
+    LOG "    4 blue"
+    >> option
+    SWITCH option
+        CASE 1 DO
+            LOG "orange is your favorite color"
+        CASE 2 DO
+            LOG "pink is your favorite color"
+        CASE 3 DO
+            LOG "green is your favorite color"
+        CASE 4 DO
+            LOG "blue is your favorite color"
+        DEFAULT DO
+            LOG "invalid option"
+    END
+END
